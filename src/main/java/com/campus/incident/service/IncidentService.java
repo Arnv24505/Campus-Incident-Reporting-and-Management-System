@@ -44,6 +44,10 @@ public interface IncidentService {
     void addMaterialLog(Long incidentId, String materials, String notes, User performer);
     
     // Search and filtering
+    Page<IncidentReport> getIncidentsWithFilters(Pageable pageable, IncidentStatus status, Long categoryId, 
+                                                Long reporterId, Long assignedToId, Integer priorityLevel, 
+                                                Boolean isUrgent, String search, User currentUser);
+    
     Page<IncidentReport> searchIncidents(String searchTerm, Pageable pageable);
     
     Page<IncidentReport> searchIncidentsByStatus(String searchTerm, List<IncidentStatus> statuses, Pageable pageable);

@@ -1,5 +1,6 @@
 package com.campus.incident.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +22,7 @@ public class ResolutionLog {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "incident_id", nullable = false)
     @NotNull(message = "Incident is required")
+    @JsonIgnore
     private IncidentReport incident;
     
     @NotBlank(message = "Action is required")
@@ -35,6 +37,7 @@ public class ResolutionLog {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "performed_by_id", nullable = false)
     @NotNull(message = "Performer is required")
+    @JsonIgnore
     private User performedBy;
     
     @Column(name = "performed_at", nullable = false, updatable = false)

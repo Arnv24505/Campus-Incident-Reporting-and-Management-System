@@ -1,5 +1,6 @@
 package com.campus.incident.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -20,6 +21,7 @@ public class StatusUpdate {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "incident_id", nullable = false)
     @NotNull(message = "Incident is required")
+    @JsonIgnore
     private IncidentReport incident;
     
     @Enumerated(EnumType.STRING)
@@ -35,6 +37,7 @@ public class StatusUpdate {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by_id", nullable = false)
     @NotNull(message = "Updated by user is required")
+    @JsonIgnore
     private User updatedBy;
     
     @Size(max = 1000, message = "Notes cannot exceed 1000 characters")

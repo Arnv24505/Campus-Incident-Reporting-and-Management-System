@@ -1,8 +1,12 @@
 package com.campus.incident.controller;
 
+import com.campus.incident.dto.CreateIncidentRequest;
+import com.campus.incident.entity.IncidentCategory;
 import com.campus.incident.entity.IncidentReport;
 import com.campus.incident.entity.IncidentStatus;
 import com.campus.incident.entity.User;
+import com.campus.incident.repository.IncidentCategoryRepository;
+import com.campus.incident.repository.IncidentReportRepository;
 import com.campus.incident.service.IncidentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -16,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -27,12 +32,107 @@ public class IncidentController {
     @Autowired
     private IncidentService incidentService;
     
+    @Autowired
+    private IncidentReportRepository incidentRepository;
+    
+    @Autowired
+    private IncidentCategoryRepository categoryRepository;
+    
+    // Get all incidents (with pagination and filtering)
+    @GetMapping
+    public ResponseEntity<Page<IncidentReport>> getAllIncidents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) IncidentStatus status,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long reporterId,
+            @RequestParam(required = false) Long assignedToId,
+            @RequestParam(required = false) Integer priorityLevel,
+            @RequestParam(required = false) Boolean isUrgent,
+            @RequestParam(required = false) String search) {
+        
+        User currentUser = getCurrentUser();
+        
+        // Create sort object
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        // For now, just return all incidents with basic pagination
+        try {
+            Page<IncidentReport> incidents = incidentRepository.findAll(pageable);
+            return ResponseEntity.ok(incidents);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(null);
+        }
+    }
+    
     // Create new incident
     @PostMapping
-    public ResponseEntity<IncidentReport> createIncident(@Valid @RequestBody IncidentReport incident) {
-        User currentUser = getCurrentUser();
-        IncidentReport created = incidentService.createIncident(incident, currentUser);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<IncidentReport> createIncident(@Valid @RequestBody CreateIncidentRequest request) {
+        try {
+            // Look up the category
+            IncidentCategory category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
+            
+            // Create the incident entity
+            IncidentReport incident = new IncidentReport();
+            incident.setTitle(request.getTitle());
+            incident.setDescription(request.getDescription());
+            incident.setLocationDetails(request.getLocationDetails());
+            incident.setCategory(category);
+            incident.setPriorityLevel(request.getPriorityLevel());
+            incident.setUrgent(request.getIsUrgent());
+            incident.setConfidential(request.getIsConfidential());
+            
+            User currentUser = getCurrentUser();
+            IncidentReport created = incidentService.createIncident(incident, currentUser);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+    
+    // Simple incident creation endpoint (bypasses service layer for now)
+    @PostMapping("/simple")
+    public ResponseEntity<IncidentReport> createSimpleIncident(@RequestBody CreateIncidentRequest request) {
+        try {
+            // Look up the category
+            IncidentCategory category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
+            
+            // Create the incident entity directly
+            IncidentReport incident = new IncidentReport();
+            incident.setTitle(request.getTitle());
+            incident.setDescription(request.getDescription());
+            incident.setLocationDetails(request.getLocationDetails());
+            incident.setCategory(category);
+            incident.setPriorityLevel(request.getPriorityLevel() != null ? request.getPriorityLevel() : 1);
+            incident.setUrgent(request.getIsUrgent() != null ? request.getIsUrgent() : false);
+            incident.setConfidential(request.getIsConfidential() != null ? request.getIsConfidential() : false);
+            incident.setStatus(IncidentStatus.REPORTED);
+            incident.setCreatedAt(LocalDateTime.now());
+            incident.setUpdatedAt(LocalDateTime.now());
+            
+            // Save directly to repository
+            IncidentReport saved = incidentRepository.save(incident);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+    
+    // Test endpoint to echo back received data
+    @PostMapping("/test")
+    public ResponseEntity<String> testEndpoint(@RequestBody String rawData) {
+        System.out.println("Raw data received: " + rawData);
+        return ResponseEntity.ok("Received: " + rawData);
     }
     
     // Get incident by ID

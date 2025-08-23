@@ -22,9 +22,17 @@ public interface IncidentReportRepository extends JpaRepository<IncidentReport, 
     
     List<IncidentReport> findByCategory(IncidentCategory category);
     
+    List<IncidentReport> findByCategoryId(Long categoryId);
+    
     List<IncidentReport> findByReporter(User reporter);
     
+    Page<IncidentReport> findByReporter(User reporter, Pageable pageable);
+    
     List<IncidentReport> findByAssignedTo(User assignedTo);
+    
+    Page<IncidentReport> findByAssignedTo(User assignedTo, Pageable pageable);
+    
+    Page<IncidentReport> findByStatusInAndAssignedToIsNull(List<IncidentStatus> statuses, Pageable pageable);
     
     List<IncidentReport> findByPriorityLevel(Integer priorityLevel);
     

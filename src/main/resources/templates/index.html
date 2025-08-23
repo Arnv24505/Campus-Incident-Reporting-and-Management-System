@@ -118,13 +118,88 @@
         .priority-high { color: #e74c3c; font-weight: bold; }
         .priority-medium { color: #f39c12; font-weight: bold; }
         .priority-low { color: #27ae60; font-weight: bold; }
+        
+        /* Form styles */
+        .form-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+        }
+        .form-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .form-actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .close-btn:hover {
+            color: #333;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🏫 Campus Incident Management System</h1>
         
-        <div class="stats-grid">
+        <!-- Login Section -->
+        <div class="section" id="loginSection">
+            <h2>🔐 Login</h2>
+            <div class="form-group">
+                <label for="loginUsername">Username:</label>
+                <input type="text" id="loginUsername" placeholder="Enter username">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" placeholder="Enter password">
+            </div>
+            <button class="button" onclick="login()">Login</button>
+            <p><strong>Default credentials:</strong> admin/admin123, maintenance1/maintenance123, reporter1/reporter123</p>
+        </div>
+        
+        <div class="stats-grid" id="dashboardContent" style="display: none;">
             <div class="stat-card">
                 <div class="stat-number" id="totalIncidents">-</div>
                 <div class="stat-label">Total Incidents</div>
@@ -166,13 +241,90 @@
             <p><strong>Default Maintenance:</strong> maintenance1 / maintenance123</p>
             <p><strong>Default Reporter:</strong> reporter1 / reporter123</p>
         </div>
+        
+        <button class="button danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- Incident Creation Form Modal -->
+    <div id="createFormOverlay" class="form-overlay">
+        <div class="form-modal">
+            <span class="close-btn" onclick="hideCreateForm()">&times;</span>
+            <h2>📝 Report New Incident</h2>
+            <form id="incidentForm" onsubmit="submitIncident(event)">
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" name="title" required placeholder="Brief description of the incident">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea id="description" name="description" required placeholder="Detailed description of what happened"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="locationDetails">Location Details</label>
+                    <input type="text" id="locationDetails" name="locationDetails" placeholder="Where did this happen? (Building, Room, etc.)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="categoryId">Category *</label>
+                    <select id="categoryId" name="categoryId" required>
+                        <option value="">Select a category</option>
+                        <option value="1">Facility Maintenance</option>
+                        <option value="2">Equipment Failure</option>
+                        <option value="3">Safety Hazard</option>
+                        <option value="4">IT Issues</option>
+                        <option value="5">HVAC Problems</option>
+                        <option value="6">Plumbing Issues</option>
+                        <option value="7">Electrical Problems</option>
+                        <option value="8">Structural Issues</option>
+                        <option value="9">Cleaning & Sanitation</option>
+                        <option value="10">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="priorityLevel">Priority Level</label>
+                    <select id="priorityLevel" name="priorityLevel">
+                        <option value="1">Low (1)</option>
+                        <option value="2">Medium (2)</option>
+                        <option value="3" selected>High (3)</option>
+                        <option value="4">Critical (4)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isUrgent" name="isUrgent"> Mark as Urgent
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isConfidential" name="isConfidential"> Mark as Confidential
+                    </label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="button" onclick="hideCreateForm()">Cancel</button>
+                    <button type="submit" class="button success">Submit Incident</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
         // Load dashboard statistics
         async function loadDashboardStats() {
+            if (!currentCredentials) return;
+            
             try {
-                const response = await fetch('/api/incidents/dashboard/stats');
+                const response = await fetch('/api/incidents/dashboard/stats', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
                 if (response.ok) {
                     const stats = await response.json();
                     document.getElementById('totalIncidents').textContent = stats.totalIncidents || 0;
@@ -187,8 +339,14 @@
 
         // Load recent incidents
         async function loadRecentIncidents() {
+            if (!currentCredentials) return;
+            
             try {
-                const response = await fetch('/api/incidents/recent?limit=5');
+                const response = await fetch('/api/incidents/recent?limit=5', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
                 if (response.ok) {
                     const incidents = await response.json();
                     displayIncidents(incidents, 'recentIncidents');
@@ -200,8 +358,14 @@
 
         // Load urgent incidents
         async function loadUrgentIncidents() {
+            if (!currentCredentials) return;
+            
             try {
-                const response = await fetch('/api/incidents/urgent');
+                const response = await fetch('/api/incidents/urgent', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
                 if (response.ok) {
                     const incidents = await response.json();
                     displayIncidents(incidents, 'recentIncidents');
@@ -213,8 +377,14 @@
 
         // Load overdue incidents
         async function loadOverdueIncidents() {
+            if (!currentCredentials) return;
+            
             try {
-                const response = await fetch('/api/incidents/overdue');
+                const response = await fetch('/api/incidents/overdue', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
                 if (response.ok) {
                     const incidents = await response.json();
                     displayIncidents(incidents, 'recentIncidents');
@@ -254,15 +424,130 @@
             return 'low';
         }
 
-        // Show create incident form (placeholder)
+        // Show create incident form
         function showCreateForm() {
-            alert('Create incident form would be implemented here. Use the API endpoint POST /api/incidents');
+            document.getElementById('createFormOverlay').style.display = 'block';
+        }
+
+        // Hide create incident form
+        function hideCreateForm() {
+            document.getElementById('createFormOverlay').style.display = 'none';
+            document.getElementById('incidentForm').reset();
+        }
+
+        // Submit incident form
+        async function submitIncident(event) {
+            event.preventDefault();
+            
+            if (!currentCredentials) {
+                alert('❌ Please login first');
+                return;
+            }
+            
+            const formData = new FormData(event.target);
+            const incidentData = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                locationDetails: formData.get('locationDetails'),
+                categoryId: parseInt(formData.get('categoryId')),
+                priorityLevel: parseInt(formData.get('priorityLevel')),
+                isUrgent: formData.get('isUrgent') === 'on',
+                isConfidential: formData.get('isConfidential') === 'on'
+            };
+
+            try {
+                const response = await fetch('/api/incidents/simple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + currentCredentials
+                    },
+                    body: JSON.stringify(incidentData)
+                });
+
+                if (response.ok) {
+                    const newIncident = await response.json();
+                    alert('✅ Incident created successfully! ID: ' + newIncident.id);
+                    hideCreateForm();
+                    loadDashboardStats();
+                    loadRecentIncidents();
+                } else if (response.status === 401) {
+                    alert('❌ Authentication failed. Please login again.');
+                    logout();
+                } else {
+                    const error = await response.text();
+                    alert('❌ Error creating incident: ' + error);
+                }
+            } catch (error) {
+                console.error('Error submitting incident:', error);
+                alert('❌ Error submitting incident. Please try again.');
+            }
+        }
+
+        // Global credentials storage
+        let currentCredentials = null;
+
+        // Login function
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                alert('❌ Please enter both username and password');
+                return;
+            }
+            
+            try {
+                // Test authentication by trying to access a protected endpoint
+                const response = await fetch('/api/incidents', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(username + ':' + password)
+                    }
+                });
+                
+                if (response.ok) {
+                    currentCredentials = btoa(username + ':' + password);
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('dashboardContent').style.display = 'block';
+                    loadDashboardStats();
+                    loadRecentIncidents();
+                    alert('✅ Login successful! Welcome, ' + username);
+                } else if (response.status === 401) {
+                    alert('❌ Invalid credentials. Please try again.');
+                } else {
+                    alert('❌ Login failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('❌ Login failed. Please try again.');
+            }
+        }
+
+        // Logout function
+        function logout() {
+            currentCredentials = null;
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
         }
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
-            loadDashboardStats();
-            loadRecentIncidents();
+            // Close form when clicking outside
+            document.getElementById('createFormOverlay').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideCreateForm();
+                }
+            });
+            
+            // Allow Enter key in login form
+            document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
         });
     </script>
 </body>

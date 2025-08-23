@@ -1,5 +1,6 @@
 package com.campus.incident.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -47,6 +48,7 @@ public class IncidentCategory {
     private LocalDateTime updatedAt;
     
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<IncidentReport> incidents = new HashSet<>();
     
     // Constructors

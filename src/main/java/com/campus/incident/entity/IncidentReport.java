@@ -1,5 +1,6 @@
 package com.campus.incident.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -38,14 +39,17 @@ public class IncidentReport {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     @NotNull(message = "Category is required")
+    @JsonIgnore
     private IncidentCategory category;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id")
+    @JsonIgnore
     private User reporter;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to_id")
+    @JsonIgnore
     private User assignedTo;
     
     @Enumerated(EnumType.STRING)
@@ -77,10 +81,12 @@ public class IncidentReport {
     
     @OneToMany(mappedBy = "incident", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @OrderBy("performedAt DESC")
+    @JsonIgnore
     private List<ResolutionLog> resolutionLogs = new ArrayList<>();
     
     @OneToMany(mappedBy = "incident", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @OrderBy("updatedAt DESC")
+    @JsonIgnore
     private List<StatusUpdate> statusUpdates = new ArrayList<>();
     
     // Constructors

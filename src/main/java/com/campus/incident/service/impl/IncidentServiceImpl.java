@@ -301,6 +301,30 @@ public class IncidentServiceImpl implements IncidentService {
     }
     
     @Override
+    public Page<IncidentReport> getIncidentsWithFilters(Pageable pageable, IncidentStatus status, Long categoryId, 
+                                                       Long reporterId, Long assignedToId, Integer priorityLevel, 
+                                                       Boolean isUrgent, String search, User currentUser) {
+        
+        // Apply role-based filtering
+        if (currentUser.getRole() == UserRole.REPORTER) {
+            // Reporters can only see their own incidents
+            return incidentRepository.findByReporter(currentUser, pageable);
+        } else if (currentUser.getRole() == UserRole.MAINTENANCE) {
+            // Maintenance can see assigned incidents and available ones
+            if (assignedToId != null && assignedToId.equals(currentUser.getId())) {
+                return incidentRepository.findByAssignedTo(currentUser, pageable);
+            } else {
+                // Show incidents that can be assigned to this user
+                return incidentRepository.findByStatusInAndAssignedToIsNull(
+                    Arrays.asList(IncidentStatus.REPORTED, IncidentStatus.UNDER_REVIEW), pageable);
+            }
+        } else {
+            // Admin can see all incidents with full filtering
+            return incidentRepository.findAll(pageable);
+        }
+    }
+    
+    @Override
     public Page<IncidentReport> searchIncidents(String searchTerm, Pageable pageable) {
         return incidentRepository.searchIncidents(searchTerm, pageable);
     }
@@ -317,7 +341,10 @@ public class IncidentServiceImpl implements IncidentService {
     
     @Override
     public List<IncidentReport> getIncidentsByCategory(Long categoryId) {
-        return incidentRepository.findByCategory(new IncidentCategory());
+        if (categoryId == null) {
+            return new ArrayList<>();
+        }
+        return incidentRepository.findByCategoryId(categoryId);
     }
     
     @Override
