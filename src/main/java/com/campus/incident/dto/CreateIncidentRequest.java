@@ -1,19 +1,13 @@
 package com.campus.incident.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
 public class CreateIncidentRequest {
     
-    @NotBlank(message = "Title is required")
     private String title;
     
-    @NotBlank(message = "Description is required")
     private String description;
     
     private String locationDetails;
     
-    @NotNull(message = "Category ID is required")
     private Long categoryId;
     
     private Integer priorityLevel;

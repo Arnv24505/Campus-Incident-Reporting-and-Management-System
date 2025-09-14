@@ -22,7 +22,7 @@ public interface IncidentService {
     void deleteIncident(Long id, User deleter);
     
     // Status management
-    IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater, String notes);
+    IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater);
     
     IncidentReport assignIncident(Long incidentId, Long assigneeId, User assigner);
     

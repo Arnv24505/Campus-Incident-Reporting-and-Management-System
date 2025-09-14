@@ -7,6 +7,7 @@ import com.campus.incident.entity.IncidentStatus;
 import com.campus.incident.entity.User;
 import com.campus.incident.repository.IncidentCategoryRepository;
 import com.campus.incident.repository.IncidentReportRepository;
+import com.campus.incident.repository.UserRepository;
 import com.campus.incident.service.IncidentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,29 @@ public class IncidentController {
     @Autowired
     private IncidentCategoryRepository categoryRepository;
     
+    @Autowired
+    private UserRepository userRepository;
+    
+    // Get current user info
+    @GetMapping("/user-info")
+    public ResponseEntity<Map<String, Object>> getCurrentUserInfo() {
+        try {
+            User currentUser = getCurrentUser();
+            Map<String, Object> userInfo = new java.util.HashMap<>();
+            userInfo.put("userId", currentUser.getId());
+            userInfo.put("username", currentUser.getUsername());
+            userInfo.put("role", currentUser.getRole().name());
+            userInfo.put("roleDisplayName", currentUser.getRole().getDisplayName());
+            userInfo.put("canCreateIncidents", true); // All authenticated users can create
+            userInfo.put("canUpdateIncidents", currentUser.getRole().isMaintenance());
+            userInfo.put("canDeleteIncidents", currentUser.getRole().isAdmin());
+            userInfo.put("canViewAllIncidents", currentUser.getRole().isMaintenance());
+            return ResponseEntity.ok(userInfo);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+    
     // Get all incidents (with pagination and filtering)
     @GetMapping
     public ResponseEntity<Page<IncidentReport>> getAllIncidents(
@@ -59,9 +83,11 @@ public class IncidentController {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        // For now, just return all incidents with basic pagination
         try {
-            Page<IncidentReport> incidents = incidentRepository.findAll(pageable);
+            // Use service method that applies role-based filtering
+            Page<IncidentReport> incidents = incidentService.getIncidentsWithFilters(
+                pageable, status, categoryId, reporterId, assignedToId, 
+                priorityLevel, isUrgent, search, currentUser);
             return ResponseEntity.ok(incidents);
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,7 +98,7 @@ public class IncidentController {
     
     // Create new incident
     @PostMapping
-    public ResponseEntity<IncidentReport> createIncident(@Valid @RequestBody CreateIncidentRequest request) {
+    public ResponseEntity<IncidentReport> createIncident(@RequestBody CreateIncidentRequest request) {
         try {
             // Look up the category
             IncidentCategory category = categoryRepository.findById(request.getCategoryId())
@@ -101,14 +127,25 @@ public class IncidentController {
     @PostMapping("/simple")
     public ResponseEntity<IncidentReport> createSimpleIncident(@RequestBody CreateIncidentRequest request) {
         try {
+            // Set default values if not provided
+            String title = (request.getTitle() != null && !request.getTitle().trim().isEmpty()) 
+                ? request.getTitle() : "Untitled Incident";
+            String description = (request.getDescription() != null && !request.getDescription().trim().isEmpty()) 
+                ? request.getDescription() : "No description provided";
+            Long categoryId = (request.getCategoryId() != null) ? request.getCategoryId() : 1L;
+            
             // Look up the category
-            IncidentCategory category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
+            IncidentCategory category = categoryRepository.findById(categoryId)
+                    .orElse(categoryRepository.findById(1L).orElse(null));
+            
+            if (category == null) {
+                return ResponseEntity.badRequest().body(null);
+            }
             
             // Create the incident entity directly
             IncidentReport incident = new IncidentReport();
-            incident.setTitle(request.getTitle());
-            incident.setDescription(request.getDescription());
+            incident.setTitle(title);
+            incident.setDescription(description);
             incident.setLocationDetails(request.getLocationDetails());
             incident.setCategory(category);
             incident.setPriorityLevel(request.getPriorityLevel() != null ? request.getPriorityLevel() : 1);
@@ -151,28 +188,59 @@ public class IncidentController {
     // Update incident
     @PutMapping("/{id}")
     public ResponseEntity<IncidentReport> updateIncident(@PathVariable Long id, 
-                                                       @Valid @RequestBody IncidentReport incidentDetails) {
-        User currentUser = getCurrentUser();
-        IncidentReport updated = incidentService.updateIncident(id, incidentDetails, currentUser);
-        return ResponseEntity.ok(updated);
+                                                       @RequestBody IncidentReport incidentDetails) {
+        try {
+            User currentUser = getCurrentUser();
+            
+            // Check if user can update incidents (maintenance or admin)
+            if (!currentUser.getRole().isMaintenance() && !currentUser.getRole().isAdmin()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            IncidentReport updated = incidentService.updateIncident(id, incidentDetails, currentUser);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
     
     // Delete incident
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteIncident(@PathVariable Long id) {
-        User currentUser = getCurrentUser();
-        incidentService.deleteIncident(id, currentUser);
-        return ResponseEntity.noContent().build();
+        try {
+            User currentUser = getCurrentUser();
+            
+            // Check if user can delete incidents
+            if (!currentUser.getRole().isAdmin()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            incidentService.deleteIncident(id, currentUser);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
     
     // Update incident status
     @PatchMapping("/{id}/status")
     public ResponseEntity<IncidentReport> updateStatus(@PathVariable Long id,
-                                                     @RequestParam IncidentStatus status,
-                                                     @RequestParam(required = false) String notes) {
-        User currentUser = getCurrentUser();
-        IncidentReport updated = incidentService.updateIncidentStatus(id, status, currentUser, notes);
-        return ResponseEntity.ok(updated);
+                                                     @RequestParam IncidentStatus status) {
+        try {
+            User currentUser = getCurrentUser();
+            
+            // Check if user can update incident status (maintenance or admin)
+            if (!currentUser.getRole().isMaintenance() && !currentUser.getRole().isAdmin()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            IncidentReport updated = incidentService.updateIncidentStatus(id, status, currentUser);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
     
     // Assign incident
@@ -438,11 +506,12 @@ public class IncidentController {
     // Helper method to get current authenticated user
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        // This is a simplified version - in a real application, you'd get the actual user from the database
-        // For now, we'll create a mock user for demonstration
-        User user = new User();
-        user.setUsername(authentication.getName());
-        user.setRole(com.campus.incident.entity.UserRole.ADMIN); // Default to admin for demo
-        return user;
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("User not authenticated");
+        }
+        
+        String username = authentication.getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
     }
 }

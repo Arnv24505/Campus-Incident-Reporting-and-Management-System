@@ -1,6 +1,6 @@
 package com.campus.incident.entity;
 
-public enum IncidentStatus {
+public enum     IncidentStatus {
     REPORTED("Reported", "Initial report submitted", 1),
     UNDER_REVIEW("Under Review", "Being reviewed by staff", 2),
     ASSIGNED("Assigned", "Assigned to maintenance staff", 3),

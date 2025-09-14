@@ -26,14 +26,22 @@ public class IncidentServiceImpl implements IncidentService {
     
     @Override
     public IncidentReport createIncident(IncidentReport incident, User reporter) {
-        // Validate incident data
-        validateIncidentData(incident);
-        
         // Set initial values
         incident.setReporter(reporter);
         incident.setStatus(IncidentStatus.REPORTED);
         incident.setCreatedAt(LocalDateTime.now());
         incident.setUpdatedAt(LocalDateTime.now());
+        
+        // Set default values if not provided
+        if (incident.getTitle() == null || incident.getTitle().trim().isEmpty()) {
+            incident.setTitle("Untitled Incident");
+        }
+        if (incident.getDescription() == null || incident.getDescription().trim().isEmpty()) {
+            incident.setDescription("No description provided");
+        }
+        if (incident.getPriorityLevel() == null) {
+            incident.setPriorityLevel(1);
+        }
         
         // Set priority based on category if not specified
         if (incident.getPriorityLevel() == null && incident.getCategory() != null) {
@@ -115,7 +123,7 @@ public class IncidentServiceImpl implements IncidentService {
     }
     
     @Override
-    public IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater, String notes) {
+    public IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater) {
         IncidentReport incident = getIncidentById(incidentId);
         
         if (!canUserUpdateIncident(incident, updater)) {
@@ -127,13 +135,12 @@ public class IncidentServiceImpl implements IncidentService {
         }
         
         IncidentStatus oldStatus = incident.getStatus();
-        incident.updateStatus(newStatus, updater, notes);
+        incident.updateStatus(newStatus, updater);
         incident.setUpdatedAt(LocalDateTime.now());
         
         // Add resolution log
         incident.addResolutionLog("Status updated", 
-                "Status changed from " + oldStatus.getDisplayName() + " to " + newStatus.getDisplayName() + 
-                (notes != null ? ": " + notes : ""), updater);
+                "Status changed from " + oldStatus.getDisplayName() + " to " + newStatus.getDisplayName(), updater);
         
         IncidentReport savedIncident = incidentRepository.save(incident);
         
@@ -464,9 +471,9 @@ public class IncidentServiceImpl implements IncidentService {
             return true;
         }
         
-        // Maintenance staff can update incidents they're assigned to
+        // Maintenance staff can update incidents they're assigned to OR incidents that are not yet assigned
         if (user.getRole().isMaintenance()) {
-            return incident.getAssignedTo() != null && incident.getAssignedTo().equals(user);
+            return incident.getAssignedTo() == null || incident.getAssignedTo().equals(user);
         }
         
         // Reporters can only update their own incidents if they're still in REPORTED status
@@ -588,17 +595,4 @@ public class IncidentServiceImpl implements IncidentService {
         return report.toString();
     }
     
-    private void validateIncidentData(IncidentReport incident) {
-        if (incident.getTitle() == null || incident.getTitle().trim().isEmpty()) {
-            throw new RuntimeException("Incident title is required");
-        }
-        
-        if (incident.getDescription() == null || incident.getDescription().trim().isEmpty()) {
-            throw new RuntimeException("Incident description is required");
-        }
-        
-        if (incident.getCategory() == null) {
-            throw new RuntimeException("Incident category is required");
-        }
-    }
 }

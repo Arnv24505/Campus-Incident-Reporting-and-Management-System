@@ -119,6 +119,31 @@
         .priority-medium { color: #f39c12; font-weight: bold; }
         .priority-low { color: #27ae60; font-weight: bold; }
         
+        /* Action buttons styling */
+        .incident-actions {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .incident-actions button, .incident-actions select {
+            margin: 2px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        
+        .incident-actions button:hover {
+            opacity: 0.8;
+        }
+        
+        .incident-actions select {
+            background: white;
+            border: 1px solid #ddd;
+        }
+        
         /* Form styles */
         .form-overlay {
             display: none;
@@ -199,31 +224,60 @@
             <p><strong>Default credentials:</strong> admin/admin123, maintenance1/maintenance123, reporter1/reporter123</p>
         </div>
         
-        <div class="stats-grid" id="dashboardContent" style="display: none;">
-            <div class="stat-card">
-                <div class="stat-number" id="totalIncidents">-</div>
-                <div class="stat-label">Total Incidents</div>
+        <div id="dashboardContent" style="display: none;">
+            <!-- User Info Section -->
+            <div class="section">
+                <h2>👤 User Information</h2>
+                <div id="userInfo" class="incident-list">
+                    <p>Loading user information...</p>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-number" id="activeIncidents">-</div>
-                <div class="stat-label">Active Incidents</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="resolvedIncidents">-</div>
-                <div class="stat-label">Resolved</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="urgentIncidents">-</div>
-                <div class="stat-label">Urgent</div>
+            
+            <!-- Dashboard Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalIncidents">-</div>
+                    <div class="stat-label">Total Incidents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeIncidents">-</div>
+                    <div class="stat-label">Active Incidents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="resolvedIncidents">-</div>
+                    <div class="stat-label">Resolved</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="urgentIncidents">-</div>
+                    <div class="stat-label">Urgent</div>
+                </div>
             </div>
         </div>
 
         <div class="section">
             <h2>🚀 Quick Actions</h2>
-            <a href="#" class="button" onclick="showCreateForm()">📝 Report New Incident</a>
-            <a href="#" class="button" onclick="loadRecentIncidents()">🕒 View Recent</a>
-            <a href="#" class="button" onclick="loadUrgentIncidents()">🚨 Urgent Issues</a>
-            <a href="#" class="button" onclick="loadOverdueIncidents()">⏰ Overdue</a>
+            <div id="quickActions">
+                <a href="#" class="button" onclick="showCreateForm()">📝 Report New Incident</a>
+                <a href="#" class="button" onclick="loadRecentIncidents()">🕒 View Recent</a>
+                <a href="#" class="button" onclick="loadUrgentIncidents()">🚨 Urgent Issues</a>
+                <a href="#" class="button" onclick="loadOverdueIncidents()">⏰ Overdue</a>
+            </div>
+        </div>
+        
+        <div class="section" id="adminActions" style="display: none;">
+            <h2>👑 Admin Actions</h2>
+            <div id="adminButtons">
+                <a href="#" class="button" onclick="loadAllIncidents()">📋 View All Incidents</a>
+                <a href="#" class="button" onclick="showBulkUpdateForm()">📊 Bulk Update Status</a>
+            </div>
+        </div>
+        
+        <div class="section" id="maintenanceActions" style="display: none;">
+            <h2>🔧 Maintenance Actions</h2>
+            <div id="maintenanceButtons">
+                <a href="#" class="button" onclick="loadAssignedIncidents()">📋 My Assigned Incidents</a>
+                <a href="#" class="button" onclick="loadAvailableIncidents()">📋 Available Incidents</a>
+            </div>
         </div>
 
         <div class="section">
@@ -394,7 +448,7 @@
             }
         }
 
-        // Display incidents in the specified container
+        // Display incidents in the specified container with action buttons
         function displayIncidents(incidents, containerId) {
             const container = document.getElementById(containerId);
             if (incidents.length === 0) {
@@ -402,19 +456,72 @@
                 return;
             }
 
-            const incidentsHtml = incidents.map(incident => `
-                <div class="incident-item">
-                    <div class="incident-title">${incident.title}</div>
-                    <div class="incident-details">
-                        <span class="status-badge status-${incident.status.toLowerCase().replace('_', '-')}">${incident.status}</span>
-                        <span class="priority-${getPriorityClass(incident.priorityLevel)}">Priority ${incident.priorityLevel}</span>
-                        <span>${incident.category?.name || 'Unknown Category'}</span>
-                        <span>${new Date(incident.createdAt).toLocaleDateString()}</span>
+            const incidentsHtml = incidents.map(incident => {
+                const actionButtons = generateActionButtons(incident);
+                return `
+                    <div class="incident-item">
+                        <div class="incident-title">${incident.title} <span style="color: #666; font-size: 0.8em;">#${incident.id}</span></div>
+                        <div class="incident-details">
+                            <span class="status-badge status-${incident.status.toLowerCase().replace('_', '-')}">${incident.status}</span>
+                            <span class="priority-${getPriorityClass(incident.priorityLevel)}">Priority ${incident.priorityLevel}</span>
+                            <span>${incident.category?.name || 'Unknown Category'}</span>
+                            <span>${new Date(incident.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div class="incident-description" style="margin: 10px 0; color: #666; font-size: 0.9em;">
+                            ${incident.description}
+                        </div>
+                        ${actionButtons}
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             container.innerHTML = incidentsHtml;
+        }
+        
+        // Generate action buttons based on user role and incident status
+        function generateActionButtons(incident) {
+            if (!currentUserInfo) return '';
+            
+            let buttons = '';
+            
+            // Admin actions
+            if (currentUserInfo.canDeleteIncidents && incident.status === 'REPORTED') {
+                buttons += `<button class="button danger" onclick="deleteIncident(${incident.id})" style="margin: 2px;">🗑️ Delete</button>`;
+            }
+            
+            // Maintenance actions
+            if (currentUserInfo.canUpdateIncidents) {
+                if (incident.status === 'REPORTED' || incident.status === 'UNDER_REVIEW') {
+                    buttons += `<button class="button success" onclick="assignToMe(${incident.id})" style="margin: 2px;">📝 Assign to Me</button>`;
+                }
+                if (incident.status === 'ASSIGNED') {
+                    buttons += `<button class="button" onclick="startWork(${incident.id})" style="margin: 2px;">▶️ Start Work</button>`;
+                }
+                if (incident.status === 'IN_PROGRESS') {
+                    buttons += `<button class="button success" onclick="completeWorkWithPrompt(${incident.id})" style="margin: 2px;">✅ Complete</button>`;
+                    buttons += `<button class="button" onclick="pauseWorkWithPrompt(${incident.id})" style="margin: 2px;">⏸️ Pause</button>`;
+                }
+                if (incident.status === 'RESOLVED') {
+                    buttons += `<button class="button" onclick="closeIncident(${incident.id})" style="margin: 2px;">🔒 Close</button>`;
+                }
+            }
+            
+            // Status update dropdown for maintenance and admin
+            if (currentUserInfo.canUpdateIncidents) {
+                buttons += `
+                    <select onchange="updateIncidentStatusFromDropdown(${incident.id}, this.value)" style="margin: 2px; padding: 5px;">
+                        <option value="">Change Status</option>
+                        <option value="UNDER_REVIEW">Under Review</option>
+                        <option value="ASSIGNED">Assigned</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="ON_HOLD">On Hold</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="CLOSED">Closed</option>
+                    </select>
+                `;
+            }
+            
+            return buttons ? `<div class="incident-actions" style="margin-top: 10px;">${buttons}</div>` : '';
         }
 
         // Get priority CSS class
@@ -455,6 +562,17 @@
                 isConfidential: formData.get('isConfidential') === 'on'
             };
 
+            // Set default values if not provided
+            if (!incidentData.title || incidentData.title.trim() === '') {
+                incidentData.title = 'Untitled Incident';
+            }
+            if (!incidentData.description || incidentData.description.trim() === '') {
+                incidentData.description = 'No description provided';
+            }
+            if (!incidentData.categoryId) {
+                incidentData.categoryId = 1; // Default to first category
+            }
+
             try {
                 const response = await fetch('/api/incidents/simple', {
                     method: 'POST',
@@ -470,7 +588,7 @@
                     alert('✅ Incident created successfully! ID: ' + newIncident.id);
                     hideCreateForm();
                     loadDashboardStats();
-                    loadRecentIncidents();
+                    refreshCurrentView();
                 } else if (response.status === 401) {
                     alert('❌ Authentication failed. Please login again.');
                     logout();
@@ -486,6 +604,7 @@
 
         // Global credentials storage
         let currentCredentials = null;
+        let currentUserInfo = null;
 
         // Login function
         async function login() {
@@ -510,6 +629,9 @@
                     currentCredentials = btoa(username + ':' + password);
                     document.getElementById('loginSection').style.display = 'none';
                     document.getElementById('dashboardContent').style.display = 'block';
+                    
+                    // Load user info and setup role-based UI
+                    await loadUserInfo();
                     loadDashboardStats();
                     loadRecentIncidents();
                     alert('✅ Login successful! Welcome, ' + username);
@@ -524,11 +646,251 @@
             }
         }
 
+        // Load user information and setup role-based UI
+        async function loadUserInfo() {
+            if (!currentCredentials) return;
+            
+            try {
+                const response = await fetch('/api/incidents/user-info', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                
+                if (response.ok) {
+                    currentUserInfo = await response.json();
+                    displayUserInfo(currentUserInfo);
+                    setupRoleBasedUI(currentUserInfo);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+        
+        // Display user information
+        function displayUserInfo(userInfo) {
+            const userInfoContainer = document.getElementById('userInfo');
+            userInfoContainer.innerHTML = `
+                <div class="incident-item">
+                    <div class="incident-title">Welcome, ${userInfo.username}!</div>
+                    <div class="incident-details">
+                        <span class="status-badge status-reported">${userInfo.roleDisplayName}</span>
+                        <span>Role: ${userInfo.role}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Setup role-based UI elements
+        function setupRoleBasedUI(userInfo) {
+            // Show/hide admin actions
+            const adminActions = document.getElementById('adminActions');
+            if (userInfo.canDeleteIncidents) {
+                adminActions.style.display = 'block';
+            } else {
+                adminActions.style.display = 'none';
+            }
+            
+            // Show/hide maintenance actions
+            const maintenanceActions = document.getElementById('maintenanceActions');
+            if (userInfo.canUpdateIncidents) {
+                maintenanceActions.style.display = 'block';
+            } else {
+                maintenanceActions.style.display = 'none';
+            }
+        }
+        
+        // Load all incidents (Admin only)
+        async function loadAllIncidents() {
+            if (!currentCredentials) return;
+            
+            try {
+                const response = await fetch('/api/incidents?size=50', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    displayIncidents(data.content, 'recentIncidents');
+                    document.querySelector('#recentIncidents').parentElement.querySelector('h2').textContent = '📋 All Incidents';
+                }
+            } catch (error) {
+                console.error('Error loading all incidents:', error);
+            }
+        }
+        
+        // Load assigned incidents (Maintenance only)
+        async function loadAssignedIncidents() {
+            if (!currentCredentials) return;
+            
+            try {
+                const response = await fetch('/api/incidents?assignedToId=' + currentUserInfo.userId, {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    displayIncidents(data.content, 'recentIncidents');
+                    document.querySelector('#recentIncidents').parentElement.querySelector('h2').textContent = '📋 My Assigned Incidents';
+                }
+            } catch (error) {
+                console.error('Error loading assigned incidents:', error);
+            }
+        }
+        
+        // Load available incidents (Maintenance only)
+        async function loadAvailableIncidents() {
+            if (!currentCredentials) return;
+            
+            try {
+                const response = await fetch('/api/incidents?status=REPORTED&size=50', {
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    displayIncidents(data.content, 'recentIncidents');
+                    document.querySelector('#recentIncidents').parentElement.querySelector('h2').textContent = '📋 Available Incidents';
+                }
+            } catch (error) {
+                console.error('Error loading available incidents:', error);
+            }
+        }
+        
+        // Update incident status from dropdown
+        function updateIncidentStatusFromDropdown(incidentId, status) {
+            if (status) {
+                updateIncidentStatus(incidentId, status);
+            }
+        }
+        
+        // Helper functions for direct actions without prompts
+        function assignToMe(incidentId) {
+            updateIncidentStatus(incidentId, 'ASSIGNED');
+        }
+        
+        function completeWorkWithPrompt(incidentId) {
+            updateIncidentStatus(incidentId, 'RESOLVED');
+        }
+        
+        function pauseWorkWithPrompt(incidentId) {
+            updateIncidentStatus(incidentId, 'ON_HOLD');
+        }
+        
+        function closeIncident(incidentId) {
+            updateIncidentStatus(incidentId, 'CLOSED');
+        }
+        
+        function showBulkUpdateForm() {
+            alert('Bulk update functionality coming soon!');
+        }
+        
+        // API functions for role-based actions
+        async function deleteIncident(incidentId) {
+            if (!confirm('Are you sure you want to delete this incident?')) return;
+            
+            try {
+                const response = await fetch(`/api/incidents/${incidentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('✅ Incident deleted successfully!');
+                    loadDashboardStats();
+                    refreshCurrentView();
+                } else if (response.status === 403) {
+                    alert('❌ You do not have permission to delete incidents.');
+                } else {
+                    alert('❌ Error deleting incident.');
+                }
+            } catch (error) {
+                console.error('Error deleting incident:', error);
+                alert('❌ Error deleting incident.');
+            }
+        }
+        
+        async function updateIncidentStatus(incidentId, status) {
+            try {
+                const url = `/api/incidents/${incidentId}/status?status=${status}`;
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('✅ Incident status updated successfully!');
+                    loadDashboardStats();
+                    refreshCurrentView();
+                } else if (response.status === 403) {
+                    alert('❌ You do not have permission to update incident status.');
+                } else {
+                    alert('❌ Error updating incident status.');
+                }
+            } catch (error) {
+                console.error('Error updating incident status:', error);
+                alert('❌ Error updating incident status.');
+            }
+        }
+        
+        async function startWork(incidentId) {
+            try {
+                const response = await fetch(`/api/incidents/${incidentId}/start-work`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': 'Basic ' + currentCredentials
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('✅ Work started successfully!');
+                    loadDashboardStats();
+                    refreshCurrentView();
+                } else if (response.status === 403) {
+                    alert('❌ You do not have permission to start work on this incident.');
+                } else {
+                    alert('❌ Error starting work.');
+                }
+            } catch (error) {
+                console.error('Error starting work:', error);
+                alert('❌ Error starting work.');
+            }
+        }
+        
+        
+        // Helper function to refresh the current view
+        function refreshCurrentView() {
+            if (currentUserInfo && currentUserInfo.canUpdateIncidents) {
+                const currentTitle = document.querySelector('#recentIncidents').parentElement.querySelector('h2').textContent;
+                if (currentTitle.includes('Assigned')) {
+                    loadAssignedIncidents();
+                } else if (currentTitle.includes('Available')) {
+                    loadAvailableIncidents();
+                } else if (currentTitle.includes('All Incidents')) {
+                    loadAllIncidents();
+                } else {
+                    loadRecentIncidents();
+                }
+            } else {
+                loadRecentIncidents();
+            }
+        }
+        
         // Logout function
         function logout() {
             currentCredentials = null;
+            currentUserInfo = null;
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('adminActions').style.display = 'none';
+            document.getElementById('maintenanceActions').style.display = 'none';
             document.getElementById('loginUsername').value = '';
             document.getElementById('loginPassword').value = '';
         }

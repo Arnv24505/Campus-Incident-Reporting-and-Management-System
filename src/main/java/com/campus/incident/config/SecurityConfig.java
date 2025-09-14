@@ -37,8 +37,25 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/").permitAll()
+                .requestMatchers("/index.html").permitAll()
                 
-                // Incident endpoints - require authentication
+                // Incident creation - all authenticated users can create
+                .requestMatchers("/api/incidents", "/api/incidents/simple").authenticated()
+                
+                // Incident viewing - all authenticated users can view
+                .requestMatchers("/api/incidents/recent", "/api/incidents/urgent", "/api/incidents/overdue").authenticated()
+                .requestMatchers("/api/incidents/dashboard/**").authenticated()
+                .requestMatchers("/api/incidents/user-info").authenticated()
+                
+                // Incident updates - only MAINTENANCE and ADMIN
+                .requestMatchers("/api/incidents/*/status", "/api/incidents/*/assign", "/api/incidents/*/start-work", 
+                                "/api/incidents/*/pause-work", "/api/incidents/*/complete-work", "/api/incidents/*/close").hasAnyRole("MAINTENANCE", "ADMIN")
+                
+                // Incident deletion - only ADMIN
+                .requestMatchers("/api/incidents/*").hasRole("ADMIN")
+                
+                // All other incident endpoints - require authentication
                 .requestMatchers("/api/incidents/**").authenticated()
                 
                 // Admin endpoints - require ADMIN role

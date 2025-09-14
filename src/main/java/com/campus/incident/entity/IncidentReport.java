@@ -22,23 +22,17 @@ public class IncidentReport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @NotBlank(message = "Title is required")
-    @Size(min = 5, max = 200, message = "Title must be between 5 and 200 characters")
     @Column(nullable = false)
     private String title;
     
-    @NotBlank(message = "Description is required")
-    @Size(min = 10, max = 2000, message = "Description must be between 10 and 2000 characters")
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
     
     @Column(name = "location_details")
-    @Size(max = 500, message = "Location details cannot exceed 500 characters")
     private String locationDetails;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
-    @NotNull(message = "Category is required")
     @JsonIgnore
     private IncidentCategory category;
     
@@ -156,17 +150,17 @@ public class IncidentReport {
         return this.status.canTransitionTo(newStatus);
     }
     
-    public void updateStatus(IncidentStatus newStatus, User updatedBy, String notes) {
+    public void updateStatus(IncidentStatus newStatus, User updatedBy) {
         if (canTransitionTo(newStatus)) {
+            IncidentStatus oldStatus = this.status;
             this.status = newStatus;
             
             // Add status update log
             StatusUpdate statusUpdate = new StatusUpdate();
             statusUpdate.setIncident(this);
-            statusUpdate.setPreviousStatus(this.status);
+            statusUpdate.setPreviousStatus(oldStatus);
             statusUpdate.setNewStatus(newStatus);
             statusUpdate.setUpdatedBy(updatedBy);
-            statusUpdate.setNotes(notes);
             statusUpdate.setUpdatedAt(LocalDateTime.now());
             
             this.statusUpdates.add(statusUpdate);
@@ -181,7 +175,7 @@ public class IncidentReport {
     public void assignTo(User user) {
         this.assignedTo = user;
         if (this.status == IncidentStatus.UNDER_REVIEW) {
-            updateStatus(IncidentStatus.ASSIGNED, user, "Incident assigned to " + user.getUsername());
+            updateStatus(IncidentStatus.ASSIGNED, user);
         }
     }
     
