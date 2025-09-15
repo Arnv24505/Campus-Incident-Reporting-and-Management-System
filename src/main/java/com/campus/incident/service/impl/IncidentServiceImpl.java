@@ -121,9 +121,14 @@ public class IncidentServiceImpl implements IncidentService {
         
         incidentRepository.delete(incident);
     }
-    
+
     @Override
     public IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater) {
+        return null;
+    }
+
+    @Override
+    public IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater, String notes) {
         IncidentReport incident = getIncidentById(incidentId);
         
         if (!canUserUpdateIncident(incident, updater)) {
@@ -135,13 +140,13 @@ public class IncidentServiceImpl implements IncidentService {
         }
         
         IncidentStatus oldStatus = incident.getStatus();
-        incident.updateStatus(newStatus, updater);
+        incident.updateStatus(newStatus, updater, notes);
         incident.setUpdatedAt(LocalDateTime.now());
-        
+
         // Add resolution log
-        incident.addResolutionLog("Status updated", 
+        incident.addResolutionLog("Status updated",
                 "Status changed from " + oldStatus.getDisplayName() + " to " + newStatus.getDisplayName(), updater);
-        
+
         IncidentReport savedIncident = incidentRepository.save(incident);
         
         // Send notifications

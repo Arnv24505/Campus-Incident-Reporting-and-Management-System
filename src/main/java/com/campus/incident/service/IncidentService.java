@@ -23,7 +23,9 @@ public interface IncidentService {
     
     // Status management
     IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater);
-    
+
+    IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater, String notes);
+
     IncidentReport assignIncident(Long incidentId, Long assigneeId, User assigner);
     
     IncidentReport startWork(Long incidentId, User worker);

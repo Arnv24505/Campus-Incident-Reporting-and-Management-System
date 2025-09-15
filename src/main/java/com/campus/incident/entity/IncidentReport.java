@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+
 @Entity
 @Table(name = "incident_reports")
 @EntityListeners(AuditingEntityListener.class)
@@ -150,7 +151,7 @@ public class IncidentReport {
         return this.status.canTransitionTo(newStatus);
     }
     
-    public void updateStatus(IncidentStatus newStatus, User updatedBy) {
+    public void updateStatus(IncidentStatus newStatus, User updatedBy, String notes) {
         if (canTransitionTo(newStatus)) {
             IncidentStatus oldStatus = this.status;
             this.status = newStatus;
@@ -161,6 +162,7 @@ public class IncidentReport {
             statusUpdate.setPreviousStatus(oldStatus);
             statusUpdate.setNewStatus(newStatus);
             statusUpdate.setUpdatedBy(updatedBy);
+            statusUpdate.setNotes(notes);
             statusUpdate.setUpdatedAt(LocalDateTime.now());
             
             this.statusUpdates.add(statusUpdate);
@@ -175,10 +177,10 @@ public class IncidentReport {
     public void assignTo(User user) {
         this.assignedTo = user;
         if (this.status == IncidentStatus.UNDER_REVIEW) {
-            updateStatus(IncidentStatus.ASSIGNED, user);
+            updateStatus(IncidentStatus.ASSIGNED, user,null);
         }
     }
-    
+
     public void addResolutionLog(String action, String notes, User performedBy) {
         ResolutionLog log = new ResolutionLog();
         log.setIncident(this);
