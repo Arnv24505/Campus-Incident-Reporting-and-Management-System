@@ -124,7 +124,7 @@ public class IncidentServiceImpl implements IncidentService {
 
     @Override
     public IncidentReport updateIncidentStatus(Long incidentId, IncidentStatus newStatus, User updater) {
-        return null;
+        return updateIncidentStatus(incidentId, newStatus, updater, null);
     }
 
     @Override
